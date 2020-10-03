@@ -43,7 +43,7 @@
       "child": [
         {
           "title": "学生档案",
-          "href": "/web/admin/archives/studentsArchives",
+          "href": "/web/admin/archives/studentArchive",
           "icon": "fa fa-list-alt",
           "target": "_self"
         },
