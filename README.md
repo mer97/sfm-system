@@ -9,5 +9,5 @@ mybatis plus
 mysql  
 ![image](https://github.com/mer97/sfm-system/blob/main/img/01.png)
 ![image](https://github.com/mer97/sfm-system/blob/main/img/02.png)
-![image](https://github.com/mer97/sft-system/blob/main/img/03.png)
+![image](https://github.com/mer97/sfm-system/blob/main/img/03.png)
 
