@@ -16,7 +16,7 @@ public class BaseController {
      *      当请求/接口时，判断该用户是否拥有“DEFAULT”权限（多个权限使用hasAnyAuthority）。
      */
     @GetMapping("/")
-    @PreAuthorize("hasAuthority('DEFAULT')")
+    @PreAuthorize("hasAuthority('SFM_SYSTEM_USER')")
     public String index(){
         return "index";
     }

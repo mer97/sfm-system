@@ -1,8 +1,16 @@
 package com.example.sfm.config;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.sfm.common.bean.AjaxAuthFailureHandler;
+import com.example.sfm.common.service.UserService;
+import com.example.sfm.enumeration.Authority;
 import com.example.sfm.enumeration.ErrorCode;
+import com.example.sfm.mapper.SFMStudentMapper;
+import com.example.sfm.mapper.SFMTeacherMapper;
+import com.example.sfm.pojo.SFMStudent;
+import com.example.sfm.pojo.SFMTeacher;
 import com.example.sfm.util.JsonUtil;
 import com.example.sfm.util.ResultUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +36,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -42,25 +51,19 @@ import java.util.List;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class UserSecurityConfig extends WebSecurityConfigurerAdapter {
 
-//    @Resource private EmployeeMapper employeeMapper;
+    @Resource private SFMStudentMapper sfmStudentMapper;
+
+    @Resource private SFMTeacherMapper sfmTeacherMapper;
 
     /**
      * json 格式装换类
      */
-    private ObjectMapper objectMapper;
+    @Resource private ObjectMapper objectMapper;
 
     /**
      * ajax请求失败处理器。
      */
-    private AjaxAuthFailureHandler ajaxAuthFailureHandler;
-
-    @Autowired
-    public UserSecurityConfig(ObjectMapper objectMapper,
-                              AjaxAuthFailureHandler ajaxAuthFailureHandler) {
-        this.objectMapper = objectMapper;
-        this.ajaxAuthFailureHandler = ajaxAuthFailureHandler;
-
-    }
+    @Resource private AjaxAuthFailureHandler ajaxAuthFailureHandler;
 
     /**
      * 配置以MD5验证密码。
@@ -93,28 +96,44 @@ public class UserSecurityConfig extends WebSecurityConfigurerAdapter {
     public UserDetailsService userDetailsService() throws UsernameNotFoundException {
         return (username) -> {
             if (StringUtils.isBlank(username)) {
-                throw new UsernameNotFoundException("用户名不存在: " + username);
+                throw new UsernameNotFoundException("登录账号不能为空");
             }
 
             List<SimpleGrantedAuthority> simpleGrantedAuthorities = new ArrayList<>();
-            simpleGrantedAuthorities.add(new SimpleGrantedAuthority("DEFAULT"));
-
-            String password;
-            // 用户授权
+            String password = null;
+            // 登录账号SD开头表示学生，TC开头表示教师，admin为系统内置管理员。
             if ("admin".equals(username)) {
-                simpleGrantedAuthorities.add(new SimpleGrantedAuthority("ADMIN"));
+                List<Authority> studentAuthority = Authority.getAdminAuthority();
+                studentAuthority.forEach( authority -> {
+                    simpleGrantedAuthorities.add(new SimpleGrantedAuthority(authority.name()));
+                });
                 password = "123456";
-            } else {
-//                LambdaQueryWrapper<Employee> lambdaQueryWrapper = Wrappers.lambdaQuery();
-//                lambdaQueryWrapper.eq(Employee::getLoginName, username);
-//                Employee employee = employeeMapper.selectOne(lambdaQueryWrapper);
-//                if (employee == null) {
-//                    throw new UsernameNotFoundException("用户名不存在: " + username);
-//                } else {
-//                    simpleGrantedAuthorities.add(new SimpleGrantedAuthority(employee.getPermission()));
-//                    password = employee.getPassword();
-//                }
-                password = "123456";
+            } else if (username.startsWith("SD")){
+                LambdaQueryWrapper<SFMStudent> lambdaQueryWrapper = Wrappers.lambdaQuery();
+                lambdaQueryWrapper.eq(SFMStudent::getNumber, username);
+                SFMStudent sfmStudent = sfmStudentMapper.selectOne(lambdaQueryWrapper);
+                if (sfmStudent == null) {
+                    throw new UsernameNotFoundException("登录账号不存在: " + username);
+                } else {
+                    List<Authority> studentAuthority = Authority.getStudentAuthority();
+                    studentAuthority.forEach( authority -> {
+                        simpleGrantedAuthorities.add(new SimpleGrantedAuthority(authority.name()));
+                    });
+                    password = sfmStudent.getPassword();
+                }
+            } else if (username.startsWith("TC")){
+                LambdaQueryWrapper<SFMTeacher> lambdaQueryWrapper = Wrappers.lambdaQuery();
+                lambdaQueryWrapper.eq(SFMTeacher::getNumber, username);
+                SFMTeacher sfmTeacher = sfmTeacherMapper.selectOne(lambdaQueryWrapper);
+                if (sfmTeacher == null) {
+                    throw new UsernameNotFoundException("登录账号不存在: " + username);
+                } else {
+                    List<Authority> studentAuthority = Authority.getTeacherAuthority();
+                    studentAuthority.forEach( authority -> {
+                        simpleGrantedAuthorities.add(new SimpleGrantedAuthority(authority.name()));
+                    });
+                    password = sfmTeacher.getPassword();
+                }
             }
 
             return User.withUsername(username)
@@ -171,7 +190,7 @@ public class UserSecurityConfig extends WebSecurityConfigurerAdapter {
                 )
                 .permitAll()
                 .anyRequest()
-                .hasAuthority("DEFAULT")
+                .hasAuthority("SFM_SYSTEM_USER")
                 .and()
                 .formLogin()
                 .loginPage("/login")
