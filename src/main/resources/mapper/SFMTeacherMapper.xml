@@ -9,7 +9,7 @@
         from sfm_teacher teacher
         left join sfm_college college on college.id = teacher.college_id
         <where>
-            and college.del_flag = '0'
+            and teacher.del_flag = '0'
             <if test="params.id != null and params.id != ''">
                 and teacher.id = #{params.id}
             </if>
